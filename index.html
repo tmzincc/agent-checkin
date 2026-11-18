@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent ID Daily Check-in</title>
+<style>
+  :root { --bg:#0f1115; --card:#1a1d24; --text:#e8eaf0; --muted:#9aa3b2; --acc:#f0b90b; --ok:#2ebd85; --bad:#f6465d; --line:#2a2e38; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:720px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:26px; margin:8px 0 4px; }
+  h2 { font-size:18px; margin:0 0 12px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .row { display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:none; }
+  .row span:first-child { color:var(--muted); }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+  button { background:var(--acc); color:#111; border:none; border-radius:8px; padding:12px 20px; font-size:15px; font-weight:700; cursor:pointer; width:100%; }
+  button:disabled { background:#3a3f4a; color:#8a90a0; cursor:not-allowed; }
+  button.ghost { background:transparent; color:var(--acc); border:1px solid var(--acc); width:auto; padding:8px 14px; font-size:13px; }
+  .msg { margin-top:12px; font-size:14px; min-height:20px; word-break:break-all; }
+  .msg.ok { color:var(--ok); } .msg.err { color:var(--bad); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 4px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; }
+  tr.me td { color:var(--acc); }
+  a { color:var(--acc); }
+  .note { font-size:13px; color:var(--muted); }
+  .banner { display:none; background:#3a2f00; border:1px solid #8a6d00; color:#ffd75e; border-radius:8px; padding:12px; margin-bottom:16px; font-size:14px; }
+  ol { padding-left:20px; } li { margin-bottom:6px; }
+  footer { color:var(--muted); font-size:12px; line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🗓️ Agent ID Daily Check-in</h1>
+  <p class="sub">Check-in harian khusus pemegang Agent ID (.ai) di BNB Chain. Streak beruntun tersimpan on-chain — tanpa server, tanpa biaya selain gas.</p>
+
+  <div class="banner" id="deploy-note">
+    ⚠️ Kontrak belum di-deploy. Halaman ini mode preview — isi <code>CONTRACT_ADDRESS</code> di <code>frontend/config.js</code> setelah deploy (lihat README).
+  </div>
+
+  <div class="card">
+    <h2>Wallet kamu</h2>
+    <div class="row"><span>Status</span><span id="wallet-addr">Belum terhubung</span></div>
+    <div class="row"><span>Agent ID</span><span id="stat-agentid">—</span></div>
+    <div class="row"><span>Streak</span><span id="stat-streak">—</span></div>
+    <div class="row"><span>Total check-in</span><span id="stat-total">—</span></div>
+    <div class="row"><span>Check-in terakhir</span><span id="stat-last">—</span></div>
+    <div class="row"><span>Total yang pernah check-in</span><span id="stat-checkers">—</span></div>
+    <div style="height:12px"></div>
+    <button id="btn-connect">Connect Wallet</button>
+    <div style="height:10px"></div>
+    <button id="btn-checkin" disabled>Check-in hari ini</button>
+    <div class="msg" id="msg"></div>
+    <div class="note" id="tx-link"></div>
+  </div>
+
+  <div class="card">
+    <h2>🏆 Leaderboard streak</h2>
+    <table>
+      <thead><tr><th>#</th><th>Alamat</th><th>Streak</th><th>Total</th></tr></thead>
+      <tbody id="lb-body"><tr><td colspan="4">Memuat…</td></tr></tbody>
+    </table>
+    <p class="note" id="lb-note"></p>
+    <button class="ghost" id="btn-refresh-lb">Muat Ulang</button>
+    <p class="note">Leaderboard dibaca langsung dari event <code>CheckIn</code> on-chain — tidak ada server.</p>
+  </div>
+
+  <div class="card">
+    <h2>Cara ikut</h2>
+    <ol>
+      <li>Punya <b>Agent ID</b> (.ai) — klaim di aplikasi Binance: Wallet → banner Agent ID.</li>
+      <li>Klik <b>Connect Wallet</b> (Binance Wallet / wallet browser apa pun). Pastikan di <b>BNB Smart Chain</b>.</li>
+      <li>Klik <b>Check-in hari ini</b> dan konfirmasi di wallet kamu. 1 check-in per hari (hari UTC).</li>
+      <li>Check-in tiap hari tanpa bolong biar streak naik. Bolong sehari → streak reset ke 1.</li>
+    </ol>
+    <p class="note">Kontrak: <span id="contract-addr">—</span></p>
+  </div>
+
+  <footer>
+    <b>Keamanan &amp; privasi.</b> Halaman ini file statis — tidak ada server, tidak ada
+    database, tidak ada sesi yang disimpan. Connect memakai wallet kamu sendiri (injected
+    provider); tidak ada login QR / pairing code. Check-in hanya terjadi saat kamu klik
+    tombol dan konfirmasi sendiri di wallet — tidak ada transaksi otomatis. Kontrak tidak
+    pernah menerima atau menyimpan dana (tanpa fungsi payable). Dibangun untuk
+    <a href="https://www.binance.com/en/support/announcement/detail/95f5dbe0ea674a48a739b59e046648bf" target="_blank" rel="noopener">Binance Agent ID Hackathon</a>.
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
